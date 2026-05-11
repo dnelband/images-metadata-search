@@ -3,22 +3,25 @@
 import { useEffect, useState } from "react";
 
 export const useSearchHistory = () => {
-  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const [searchCounts, setSearchCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    const storedHistory = localStorage.getItem("searchHistory");
-    if (storedHistory) {
-      setSearchHistory(JSON.parse(storedHistory));
+    const storedCounts = localStorage.getItem("searchAnalytics");
+    if (storedCounts) {
+      setSearchCounts(JSON.parse(storedCounts));
     }
   }, []);
 
   const addToSearchHistory = (query: string) => {
-    if (!query.trim()) return; 
-    const updatedHistory = [query, ...searchHistory];
-    localStorage.setItem("searchHistory", JSON.stringify(updatedHistory));
-    // need to add some anayltics here, like number of searches, most common search terms, etc.
-    setSearchHistory(updatedHistory);
+    if (!query.trim()) return;
+    const updatedCounts = { ...searchCounts, [query]: (searchCounts[query] || 0) + 1 };
+    localStorage.setItem("searchAnalytics", JSON.stringify(updatedCounts));
+    setSearchCounts(updatedCounts);
   };
 
-  return { searchHistory, addToSearchHistory };
+  const searchHistory = Object.entries(searchCounts)
+    .sort(([, a], [, b]) => b - a)
+    .map(([term]) => term);
+
+  return { searchHistory, searchCounts, addToSearchHistory };
 };

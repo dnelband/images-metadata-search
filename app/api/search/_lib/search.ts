@@ -1,5 +1,3 @@
-"use server";
-
 import { promises as fs } from "fs";
 import {
   SortBy,
@@ -7,10 +5,11 @@ import {
   SearchResult,
   Filters,
   FilterOptions,
-} from "../_lib/types";
-import { getSearchResultsFilterOptions } from "./_lib/getSearchResultsFilterOptions";
-import { filterSearchResults } from "./_lib/filterSearchResults";
-import { normalizeSearchResults } from "./_lib/normalizeSearchResults";
+  PreProcessedSearchResult,
+} from "../../../_lib/types";
+import { getSearchResultsFilterOptions } from "./getSearchResultsFilterOptions";
+import { filterSearchResults } from "./filterSearchResults";
+import { normalizeSearchResults } from "./normalizeSearchResults";
 
 interface GetSearchResultsParams {
   filters?: Filters;
@@ -34,20 +33,39 @@ interface GetSearchResultsResponse {
   collectionAttributes: SearchResultsCollectionAttributes;
 }
 
+let cachedNormalizedData: SearchResult[] | null = null;
+let cachedFilterOptions: FilterOptions | null = null;
+
+async function loadSearchResultsData() {
+  if (cachedNormalizedData && cachedFilterOptions) {
+    return { normalizedData: cachedNormalizedData, filterOptions: cachedFilterOptions };
+  }
+
+  const file = await fs.readFile(`${process.cwd()}/app/data.json`, "utf8");
+  const rawData = JSON.parse(file);
+
+  const normalizedData = normalizeSearchResults(rawData);
+
+  const filterOptions = getSearchResultsFilterOptions(normalizedData);
+
+  cachedNormalizedData = normalizedData;
+  cachedFilterOptions = filterOptions;
+
+  return { normalizedData, filterOptions };
+}
+
 export async function getSearchResults({
   filters,
   page = 0,
   pageSize = 10,
   sortOrder = "desc",
 }: GetSearchResultsParams): Promise<GetSearchResultsResponse> {
+  const { normalizedData, filterOptions } = await loadSearchResultsData();
 
-  const file = await fs.readFile(`${process.cwd()}/app/data.json`, "utf8");
-  const data = JSON.parse(file);
+  const searchResults = filters
+    ? filterSearchResults(normalizedData, filters)
+    : normalizedData;
 
-  // filter search results based on filters
-  const searchResults =  normalizeSearchResults( filters ? filterSearchResults(data, filters) : data);
-  
-  // sort search results based on datum
   searchResults.sort((a: SearchResult, b: SearchResult) => {
     if (sortOrder === "asc") {
       return a.datum.getTime() - b.datum.getTime();
@@ -58,7 +76,7 @@ export async function getSearchResults({
   return {
     items: searchResults.slice(page * pageSize, (page + 1) * pageSize),
     collectionAttributes: {
-      filterOptions: getSearchResultsFilterOptions(data),
+      filterOptions,
       page,
       pageSize,
       totalPages: Math.ceil(searchResults.length / pageSize),

@@ -1,9 +1,7 @@
-import { restrictionDelimiterRegex } from "./const";
-
 export const normalizeRestriction = (restriction: string): string => {
-    return restriction
-        .split(restrictionDelimiterRegex)
-        .map(part => part.trim())
-        .filter(part => part.length > 0)
-        .join(' ');
-}
+  return restriction
+    .split(/x/i) // Split by X (case-insensitive)
+    .map((part) => part.trim().toLowerCase())
+    .filter((part) => part.length > 0)
+    .join(' ');
+};

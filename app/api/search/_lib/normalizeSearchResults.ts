@@ -1,5 +1,6 @@
-import { format, formatDate, parse } from "date-fns";
-import { PreProcessedSearchResult, SearchResult } from "../../_lib/types";
+import { parse } from "date-fns";
+import { PreProcessedSearchResult, SearchResult } from "../../../_lib/types";
+import { extractRestrictions } from "./restrictions";
 
 export const normalizeSearchResults = (
   searchResults: PreProcessedSearchResult[],
@@ -8,6 +9,7 @@ export const normalizeSearchResults = (
     return {
       ...result,
       datum: parse(result.datum, "dd.MM.yyyy", new Date()),
+      restrictions: extractRestrictions(result.suchtext),
     };
   });
 };
